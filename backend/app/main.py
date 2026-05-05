@@ -1,31 +1,76 @@
-"""CRM Template — FastAPI entry point."""
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select, func
 
-app = FastAPI(title="CRM Template", version="0.1.0",
-              description="Generic CRM template for small businesses")
+from .config import settings
+from .database import SessionLocal
+from .metrics import PrometheusMiddleware, metrics_endpoint, ORDERS_GAUGE
+from .routers import (
+    auth_router, users_router, branches_router, customers_router, devices_router,
+    products_router, stock_router, orders_router, finance_router, salaries_router,
+    reports_router,
+)
+from . import models
 
-requests_total = Counter("crm_requests_total", "Total HTTP requests",
-                         ["method", "endpoint"])
 
-@app.get("/")
-def root():
-    return {"app": "crm-template", "status": "running",
-            "docs": "/docs", "metrics": "/metrics"}
+def update_orders_gauge():
+    with SessionLocal() as db:
+        rows = db.execute(
+            select(models.Order.status, func.count()).group_by(models.Order.status)
+        ).all()
+        # reset
+        for s in ('new', 'diagnosing', 'awaiting', 'in_repair', 'ready', 'issued', 'cancelled', 'warranty'):
+            ORDERS_GAUGE.labels(s).set(0)
+        for status, n in rows:
+            ORDERS_GAUGE.labels(status).set(n)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        update_orders_gauge()
+    except Exception:
+        pass
+    yield
+
+
+app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
+
+origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins or ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(PrometheusMiddleware)
+
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "app": settings.app_name, "env": settings.app_env}
+
 
 @app.get("/metrics")
 def metrics():
-    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    try:
+        update_orders_gauge()
+    except Exception:
+        pass
+    return metrics_endpoint()
 
-# TODO: include routers
-# from .routers import customers, orders, inventory, finance, auth
-# app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-# app.include_router(customers.router, prefix="/api/v1/customers", tags=["customers"])
-# app.include_router(orders.router, prefix="/api/v1/orders", tags=["orders"])
-# app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["inventory"])
-# app.include_router(finance.router, prefix="/api/v1/finance", tags=["finance"])
+
+# Routers
+app.include_router(auth_router,     prefix="/api/auth",     tags=["auth"])
+app.include_router(users_router,    prefix="/api/users",    tags=["users"])
+app.include_router(branches_router, prefix="/api/branches", tags=["branches"])
+app.include_router(customers_router,prefix="/api/customers",tags=["customers"])
+app.include_router(devices_router,  prefix="/api/devices",  tags=["devices"])
+app.include_router(products_router, prefix="/api/products", tags=["products"])
+app.include_router(stock_router,    prefix="/api/stock",    tags=["stock"])
+app.include_router(orders_router,   prefix="/api/orders",   tags=["orders"])
+app.include_router(finance_router,  prefix="/api/finance",  tags=["finance"])
+app.include_router(salaries_router, prefix="/api/salaries", tags=["salaries"])
+app.include_router(reports_router,  prefix="/api/reports",  tags=["reports"])

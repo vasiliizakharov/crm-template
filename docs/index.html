@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Service CRM — руководство</title>
+<style>
+:root{--bg:#0f172a;--card:#ffffff;--ink:#0f172a;--muted:#475569;--brand:#1d4ed8;--accent:#0891b2;--ok:#15803d;--warn:#b45309;--danger:#b91c1c;--border:#e2e8f0;}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#f1f5f9;}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px;}
+h1{font-size:28px;margin:0 0 8px}
+h2{font-size:22px;margin:36px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px}
+h3{font-size:17px;margin:24px 0 8px;color:var(--brand)}
+.lead{color:var(--muted);font-size:15px;margin:0 0 24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin:14px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:#f8fafc;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+code{background:#f1f5f9;padding:1px 6px;border-radius:4px;color:#0f172a}
+pre{background:#0b1220;color:#e2e8f0;padding:14px 16px;border-radius:8px;overflow-x:auto;line-height:1.5}
+pre code{background:transparent;color:inherit;padding:0}
+.kbd{display:inline-block;background:#f8fafc;border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:ui-monospace,monospace;font-size:12px}
+.role{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-right:4px}
+.role.admin{background:#dbeafe;color:#1e3a8a}
+.role.manager{background:#fef3c7;color:#854d0e}
+.role.warehouse{background:#dcfce7;color:#14532d}
+.role.master{background:#ede9fe;color:#5b21b6}
+.role.accountant{background:#fee2e2;color:#7f1d1d}
+.callout{border-left:4px solid var(--accent);background:#ecfeff;padding:12px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:14px}
+.callout.warn{border-color:var(--warn);background:#fffbeb}
+.callout.ok{border-color:var(--ok);background:#f0fdf4}
+.toc{font-size:14px;color:var(--muted)}
+.toc a{color:var(--brand);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.muted{color:var(--muted);font-size:13px}
+.flex{display:flex;gap:12px;flex-wrap:wrap}
+.tag{display:inline-block;background:#f1f5f9;color:var(--muted);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600}
+.endpoint{font-family:ui-monospace,monospace;background:#f8fafc;padding:6px 10px;border-radius:4px;border:1px solid var(--border);font-size:13px;display:inline-block;margin:2px 0}
+.method-get{color:var(--ok);font-weight:700}
+.method-post{color:var(--brand);font-weight:700}
+.method-put{color:var(--warn);font-weight:700}
+.method-patch{color:#7c3aed;font-weight:700}
+.method-delete{color:var(--danger);font-weight:700}
+hr{border:0;border-top:1px solid var(--border);margin:24px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Service CRM</h1>
+<p class="lead">Руководство пользователя и администратора. Система управления сервисным центром: заказы-наряды, склад, финансы, зарплата.</p>
+
+<div class="card toc">
+<b>Содержание:</b>
+<a href="#overview">Обзор</a> · <a href="#login">Вход</a> · <a href="#roles">Роли</a> · <a href="#orders">Заказы</a> · <a href="#customers">Клиенты</a> · <a href="#stock">Склад</a> · <a href="#finance">Финансы</a> · <a href="#salaries">Зарплата</a> · <a href="#reports">Отчёты</a> · <a href="#api">API</a> · <a href="#deploy">Развёртывание</a> · <a href="#ops">Операции</a>
+</div>
+
+<h2 id="overview">1. Обзор</h2>
+<div class="card">
+<p>Service CRM Template — open-source web system for a network of service centers. Implements core service-center processes: intake, order status flow, parts inventory, per-order finance, master salary calculation.</p>
+<p><b>Веб-интерфейс:</b> <code>https://crm.example.com</code> · <b>API:</b> <code>https://crm.example.com/api/</code> · <b>API docs:</b> <code>https://crm.example.com/api/docs</code></p>
+<div class="grid">
+  <div><h3>Технологии</h3><ul><li>Backend: FastAPI (Python 3.12)</li><li>Frontend: React 18 + Vite + Tailwind</li><li>DB: PostgreSQL 16</li><li>Auth: JWT (HS256, 7 дней)</li><li>Метрики: Prometheus <code>/metrics</code></li></ul></div>
+  <div><h3>Контейнеры</h3><ul><li><code>service-crm-db</code> — PostgreSQL</li><li><code>service-crm-backend</code> — FastAPI</li><li><code>service-crm-frontend</code> — статика SPA на nginx</li></ul></div>
+</div>
+</div>
+
+<h2 id="login">2. Вход в систему</h2>
+<div class="card">
+<ol>
+<li>Открыть <code>https://crm.example.com</code> в браузере (Chrome/Firefox/Safari).</li>
+<li>Ввести email и пароль администратора (выданы при установке).</li>
+<li>После входа открывается <b>Дашборд</b> со сводкой за 30 дней.</li>
+</ol>
+<p>Сессия живёт 7 дней. После истечения система перенаправит на форму входа автоматически.</p>
+</div>
+
+<h2 id="roles">3. Роли и права</h2>
+<div class="card">
+<table>
+<thead><tr><th>Роль</th><th>Заказы</th><th>Клиенты</th><th>Товары</th><th>Склад</th><th>Финансы</th><th>Зарплата</th><th>Сотрудники</th></tr></thead>
+<tbody>
+<tr><td><span class="role admin">admin</span></td><td>RW</td><td>RW</td><td>RW</td><td>RW</td><td>RW</td><td>RW</td><td>RW</td></tr>
+<tr><td><span class="role manager">manager</span></td><td>RW</td><td>RW</td><td>RW</td><td>R</td><td>RW</td><td>—</td><td>—</td></tr>
+<tr><td><span class="role warehouse">warehouse</span></td><td>R</td><td>—</td><td>RW</td><td>RW</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td><span class="role master">master</span></td><td>RW</td><td>—</td><td>R</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td><span class="role accountant">accountant</span></td><td>R</td><td>R</td><td>R</td><td>R</td><td>RW</td><td>RW</td><td>—</td></tr>
+</tbody>
+</table>
+<p class="muted">RW — чтение и запись, R — только чтение, «—» — нет доступа. Кнопка действия отображается только если у роли есть право.</p>
+</div>
+
+<h2 id="orders">4. Заказы (Заказ-наряд)</h2>
+<div class="card">
+<h3>Создание заказа</h3>
+<ol>
+<li>Раздел <b>Заказы</b> → <b>+ Новый заказ</b>.</li>
+<li>Выбрать клиента из справочника (или сначала создать в разделе <b>Клиенты</b>).</li>
+<li>Указать заявленную неисправность и предварительную стоимость.</li>
+<li>После создания открыть карточку заказа и добавить позиции (запчасти/услуги).</li>
+</ol>
+<h3>Жизненный цикл (FSM статусов)</h3>
+<pre><code>new → diagnosing → awaiting → in_repair → ready → issued → warranty
+                                          ↑                ↓
+                                          └──── (cancelled из любого, кроме issued) ──┘</code></pre>
+<table>
+<thead><tr><th>Статус</th><th>Когда выставлять</th></tr></thead>
+<tbody>
+<tr><td><b>new</b></td><td>Заказ принят, ждёт диагностики</td></tr>
+<tr><td><b>diagnosing</b></td><td>Мастер диагностирует устройство</td></tr>
+<tr><td><b>awaiting</b></td><td>Ожидание запчастей или согласования с клиентом</td></tr>
+<tr><td><b>in_repair</b></td><td>Идёт ремонт</td></tr>
+<tr><td><b>ready</b></td><td>Готов к выдаче</td></tr>
+<tr><td><b>issued</b></td><td>Выдан клиенту. Автоматически проставляется <code>issued_at</code> и гарантия +90 дней.</td></tr>
+<tr><td><b>warranty</b></td><td>Возврат по гарантии</td></tr>
+<tr><td><b>cancelled</b></td><td>Отмена</td></tr>
+</tbody>
+</table>
+<h3>Состав заказа</h3>
+<p>В карточке заказа кнопка <b>+ Позиция</b> добавляет:</p>
+<ul>
+<li><b>Услугу</b> — название, кол-во, цена, % мастеру (для расчёта зарплаты).</li>
+<li><b>Запчасть</b> — выбор из каталога; остаток автоматически списывается со склада. При удалении позиции — возвращается на склад.</li>
+</ul>
+<div class="callout warn">Если на складе недостаточно запчастей — добавление позиции не пройдёт. Сначала оформите приход на склад.</div>
+<h3>Приём оплаты</h3>
+<p>Кнопка <b>Принять оплату</b> в карточке заказа создаёт финансовую транзакцию <code>income</code> с привязкой к заказу. <code>paid_amount</code> и <code>payment_status</code> заказа обновляются автоматически (<code>unpaid</code> → <code>partial</code> → <code>paid</code>).</p>
+<h3>История</h3>
+<p>Каждое изменение статуса, редактирование и оплата фиксируются в разделе <b>История</b> карточки заказа. Хранится JSON-снимок «было/стало» и комментарий.</p>
+</div>
+
+<h2 id="customers">5. Клиенты</h2>
+<div class="card">
+<p>Раздел <b>Клиенты</b>: справочник физических и юридических лиц. Поиск по имени/телефону/email. Поля: ФИО, телефон, доп. телефон, email, ИНН, адрес, заметки, скидка %, blacklist.</p>
+<p>Удаление клиента запрещено, если у него есть заказы (RESTRICT FK). В этом случае пометьте его в blacklist.</p>
+</div>
+
+<h2 id="stock">6. Склад</h2>
+<div class="card">
+<h3>Каталог</h3>
+<p>Раздел <b>Товары</b>: позиции типа <code>part</code> (запчасть, есть остаток на складе) или <code>service</code> (услуга, не имеет остатка). SKU, цена клиента, себестоимость.</p>
+<h3>Движения</h3>
+<table>
+<thead><tr><th>Тип</th><th>Действие</th></tr></thead>
+<tbody>
+<tr><td><b>in</b></td><td>Приход (закупка / поступление)</td></tr>
+<tr><td><b>out</b></td><td>Расход (расходование, уход в заказ выполняется автоматически)</td></tr>
+<tr><td><b>adjust</b></td><td>Установить остаток в заданное значение (инвентаризация)</td></tr>
+<tr><td><b>writeoff</b></td><td>Списание (брак, потеря)</td></tr>
+</tbody>
+</table>
+<p class="muted">Любое движение фиксируется в журнале <code>stock_movements</code> с <code>user_id</code>, временной меткой и комментарием.</p>
+</div>
+
+<h2 id="finance">7. Финансы</h2>
+<div class="card">
+<p>Все денежные операции — в одном журнале <code>transactions</code> с двумя типами:</p>
+<ul>
+<li><b>income</b> — поступление (оплата заказа, прочие доходы)</li>
+<li><b>expense</b> — расход (выплата ЗП, аренда, закупка запчастей, прочее)</li>
+</ul>
+<p>Методы оплаты: <span class="tag">cash</span> <span class="tag">card</span> <span class="tag">transfer</span> <span class="tag">sbp</span> <span class="tag">other</span>.</p>
+<p>Каждая транзакция МОЖЕТ быть привязана к заказу (FK <code>order_id</code>). Операционные расходы (аренда, коммуналка) идут с <code>order_id = NULL</code>.</p>
+<p>На дашборде раздела показаны три карточки: <b>Доходы</b>, <b>Расходы</b>, <b>Баланс</b> (income − expense) за весь период.</p>
+</div>
+
+<h2 id="salaries">8. Зарплата</h2>
+<div class="card">
+<h3>Правила начисления</h3>
+<p>Для каждого сотрудника создаются правила (<b>Зарплата → + Правило</b>) с компонентами:</p>
+<table>
+<thead><tr><th>Параметр</th><th>Назначение</th></tr></thead>
+<tbody>
+<tr><td><code>base_salary</code></td><td>Фиксированный оклад за период</td></tr>
+<tr><td><code>work_share_pct</code></td><td>% от стоимости работ (для мастера). Может быть переопределён на уровне позиции <code>order_items.master_share_pct</code>.</td></tr>
+<tr><td><code>parts_share_pct</code></td><td>% от наценки на запчасть (price − cost) × qty (для мастера)</td></tr>
+<tr><td><code>revenue_share_pct</code></td><td>% от общей выручки заказа (для менеджера)</td></tr>
+</tbody>
+</table>
+<h3>Расчёт</h3>
+<p>В разделе <b>Зарплата → Рассчитать</b> выбирается сотрудник, период и опциональные премии/удержания. Кнопка <b>Предпросмотр</b> возвращает расчёт без сохранения, <b>Сохранить</b> — фиксирует в <code>salary_records</code>.</p>
+<p>Алгоритм для одного заказа из периода (включаются только заказы с <code>issued_at ∈ [start; end)</code>):</p>
+<pre><code>сотрудник = master_id заказа?  для каждого item:
+    if item.kind = 'service':
+        works += unit_price * qty * (item.master_share_pct ИЛИ rule.work_share_pct) / 100
+    if item.kind = 'part':
+        margin = max(0, (unit_price - unit_cost) * qty)
+        parts  += margin * rule.parts_share_pct / 100
+
+сотрудник = manager_id заказа?
+    revenue += order.total_amount * rule.revenue_share_pct / 100
+
+ИТОГО = base_salary + works + parts + revenue + bonus - deduction</code></pre>
+<h3>Выплата</h3>
+<p>В таблице сохранённых расчётов кнопка <b>Выплатить</b> ставит <code>paid=true</code> и автоматически создаёт расходную транзакцию категории <code>salary</code> на сумму ИТОГО.</p>
+</div>
+
+<h2 id="reports">9. Отчёты</h2>
+<div class="card">
+<h3>Сводка периода (по умолчанию 30 дней)</h3>
+<ul><li>Количество заказов и распределение по статусам</li><li>Выручка / Расход / Прибыль</li><li>Средний чек по выданным заказам</li></ul>
+<h3>Склад</h3>
+<ul><li>Количество позиций</li><li>Стоимость остатков по себестоимости и по продажной цене</li></ul>
+<h3>ТОП-10 клиентов</h3>
+<ul><li>По общей сумме заказов за всю историю</li></ul>
+</div>
+
+<h2 id="api">10. API (для интеграций)</h2>
+<div class="card">
+<p>Базовый URL: <code>https://crm.example.com/api/</code>. Все защищённые эндпоинты требуют <code>Authorization: Bearer &lt;JWT&gt;</code>.</p>
+<h3>Авторизация</h3>
+<div class="endpoint"><span class="method-post">POST</span> /api/auth/login-json — <code>{ email, password }</code> → <code>{ access_token, user }</code></div><br>
+<div class="endpoint"><span class="method-get">GET</span> /api/auth/me</div>
+<h3>Заказы</h3>
+<div class="endpoint"><span class="method-get">GET</span> /api/orders/?status=&amp;customer_id=&amp;master_id=&amp;q=</div><br>
+<div class="endpoint"><span class="method-post">POST</span> /api/orders/</div><br>
+<div class="endpoint"><span class="method-get">GET</span> /api/orders/{id}</div><br>
+<div class="endpoint"><span class="method-put">PUT</span> /api/orders/{id}</div><br>
+<div class="endpoint"><span class="method-patch">PATCH</span> /api/orders/{id}/status</div><br>
+<div class="endpoint"><span class="method-post">POST</span> /api/orders/{id}/items</div><br>
+<div class="endpoint"><span class="method-delete">DELETE</span> /api/orders/{id}/items/{item_id}</div><br>
+<div class="endpoint"><span class="method-get">GET</span> /api/orders/{id}/history</div>
+<h3>Клиенты / Устройства / Товары / Склад</h3>
+<div class="endpoint"><span class="method-get">GET</span> /api/customers/?q=</div>
+<div class="endpoint"><span class="method-post">POST</span> /api/customers/</div><br>
+<div class="endpoint"><span class="method-get">GET</span> /api/devices/?customer_id=</div>
+<div class="endpoint"><span class="method-post">POST</span> /api/devices/</div><br>
+<div class="endpoint"><span class="method-get">GET</span> /api/products/?kind=part</div>
+<div class="endpoint"><span class="method-post">POST</span> /api/products/</div><br>
+<div class="endpoint"><span class="method-get">GET</span> /api/stock/</div>
+<div class="endpoint"><span class="method-post">POST</span> /api/stock/movement</div>
+<div class="endpoint"><span class="method-get">GET</span> /api/stock/movements</div>
+<h3>Финансы / Зарплата / Отчёты</h3>
+<div class="endpoint"><span class="method-get">GET</span> /api/finance/?type=&amp;order_id=</div>
+<div class="endpoint"><span class="method-post">POST</span> /api/finance/</div>
+<div class="endpoint"><span class="method-get">GET</span> /api/finance/balance?period_start=&amp;period_end=</div><br>
+<div class="endpoint"><span class="method-get">GET</span> /api/salaries/rules</div>
+<div class="endpoint"><span class="method-post">POST</span> /api/salaries/rules</div>
+<div class="endpoint"><span class="method-post">POST</span> /api/salaries/calc</div>
+<div class="endpoint"><span class="method-get">GET</span> /api/salaries/records</div>
+<div class="endpoint"><span class="method-post">POST</span> /api/salaries/records/{id}/pay</div><br>
+<div class="endpoint"><span class="method-get">GET</span> /api/reports/summary</div>
+<div class="endpoint"><span class="method-get">GET</span> /api/reports/stock-value</div>
+<div class="endpoint"><span class="method-get">GET</span> /api/reports/top-customers</div>
+</div>
+
+<h2 id="deploy">11. Развёртывание (для админа)</h2>
+<div class="card">
+<h3>Требования</h3>
+<ul>
+<li>Docker 24+ и Docker Compose v2</li>
+<li>Внутри Proxmox LXC: <code>features: nesting=1,keyctl=1</code> в <code>/etc/pve/lxc/&lt;id&gt;.conf</code></li>
+<li>Свободный порт <code>127.0.0.1:8090</code> (backend) и <code>127.0.0.1:8091</code> (frontend)</li>
+<li>Reverse-proxy (nginx) на 80/443 с прокидыванием на эти порты</li>
+</ul>
+<h3>Установка</h3>
+<pre><code># 1. Клонировать или распаковать исходники в /srv/service-crm/
+# 2. Настроить переменные окружения:
+cp .env.example .env
+nano .env   # PG_PASSWORD, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
+
+# 3. Собрать и запустить
+docker compose up -d --build
+
+# 4. Проверить:
+curl http://127.0.0.1:8090/health
+curl -I http://127.0.0.1:8091/</code></pre>
+<h3>Структура переменных <code>.env</code></h3>
+<table>
+<thead><tr><th>Переменная</th><th>Назначение</th></tr></thead>
+<tbody>
+<tr><td><code>PG_PASSWORD</code></td><td>Пароль PostgreSQL для пользователя <code>crm</code></td></tr>
+<tr><td><code>JWT_SECRET</code></td><td>64-символьный hex для подписи токенов (HMAC-SHA256)</td></tr>
+<tr><td><code>ADMIN_EMAIL</code></td><td>Email первого администратора (создаётся идемпотентно)</td></tr>
+<tr><td><code>ADMIN_PASSWORD</code></td><td>Пароль первого администратора</td></tr>
+<tr><td><code>ADMIN_FULL_NAME</code></td><td>ФИО для отображения</td></tr>
+<tr><td><code>CORS_ORIGINS</code></td><td>Список через запятую (например <code>https://crm.example.com</code>)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="ops">12. Операции (Makefile)</h2>
+<div class="card">
+<table>
+<thead><tr><th>Команда</th><th>Действие</th></tr></thead>
+<tbody>
+<tr><td><code>make up</code></td><td>Запустить стек (фоновые контейнеры)</td></tr>
+<tr><td><code>make down</code></td><td>Остановить стек</td></tr>
+<tr><td><code>make build</code></td><td>Пересобрать образы (с pull базовых)</td></tr>
+<tr><td><code>make restart</code></td><td>Перезапуск контейнеров</td></tr>
+<tr><td><code>make ps</code></td><td>Статус и health</td></tr>
+<tr><td><code>make logs</code></td><td>Live-логи всех контейнеров</td></tr>
+<tr><td><code>make sh-db</code></td><td>psql внутри контейнера БД (<code>crm</code> на <code>crm</code>)</td></tr>
+<tr><td><code>make backup</code></td><td>Дамп БД в <code>backups/crm_TIMESTAMP.sql.gz</code></td></tr>
+</tbody>
+</table>
+<h3>Резервная копия и восстановление</h3>
+<pre><code># Бэкап (запускать ежедневно через cron)
+cd /srv/service-crm &amp;&amp; make backup
+
+# Восстановление из дампа
+gunzip -c backups/crm_YYYYMMDD_HHMMSS.sql.gz | \
+  docker compose exec -T db psql -U crm -d crm</code></pre>
+<div class="callout warn">Хранить бэкапы за пределами того же сервера. Минимум — другая машина в той же сети, оптимум — внешнее S3-совместимое хранилище.</div>
+<h3>Обновление</h3>
+<pre><code># 1. Получить новый код (git pull / scp)
+# 2. Пересобрать и перезапустить
+docker compose up -d --build
+# Миграции применяются автоматически при старте backend (idempotent).</code></pre>
+<h3>Мониторинг</h3>
+<p>Endpoint <code>/metrics</code> отдаёт метрики в формате Prometheus:</p>
+<ul>
+<li><code>service_crm_requests_total{method,path,status}</code> — счётчик запросов</li>
+<li><code>service_crm_request_latency_seconds{method,path}</code> — гистограмма задержек</li>
+<li><code>service_crm_orders_total{status}</code> — текущее распределение заказов по статусам</li>
+</ul>
+</div>
+
+<hr>
+<p style="color:#8890b8; font-size:13px; margin-top:32px; text-align:center;">IP allow-list только · 2026-04-30</p>
+
+</div>
+</body>
+</html>

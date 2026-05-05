@@ -1,42 +1,122 @@
-# CRM Template — FastAPI + Vue 3 + PostgreSQL
+# Service CRM Template
 
-Generic CRM template for small businesses. Containerized, deployable in one command.
+Production-ready field service CRM (parts, repairs, orders, inventory, salaries, finance) — open template you can fork and adapt for any service business.
 
-## Features
-
-- **Customers** — base of clients, contacts, tags, history
-- **Orders / Tasks** — lifecycle (new → in_progress → done → archived), status history
-- **Inventory** — products catalog, stock levels, in/out operations
-- **Finance** — income/expense tied to orders, simple balance reports
-- **Roles** — Admin / Manager / Worker (RBAC)
-- **REST API** — OpenAPI auto-docs at /docs
-- **Frontend** — Vue 3 + Tailwind, mobile-ready
-- **Observability** — `/metrics` Prometheus endpoint
-
-## Quick start
-
-```bash
-git clone https://github.com/vasiliizakharov/crm-template.git
-cd crm-template
-cp .env.example .env
-docker compose up -d
-```
-
-Open:
-- App: http://localhost:8000
-- API docs: http://localhost:8000/docs
-- Default login (override in .env): admin / changeme-please
+Full stack: FastAPI + PostgreSQL + React, deployable with a single `docker compose up`.
 
 ## Stack
 
-| Layer | Tech |
-|---|---|
-| Backend | FastAPI 0.115+, SQLAlchemy 2.0, Alembic |
-| DB | PostgreSQL 16 |
-| Frontend | Vue 3 + Vite + Tailwind |
-| Auth | JWT cookies + Argon2 hashes |
-| Deploy | Docker Compose |
+- **Backend:** Python 3.12, FastAPI 0.115, SQLAlchemy 2, psycopg3, JWT (HS256)
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, Zustand
+- **DB:** PostgreSQL 16
+- **Deployment:** docker-compose (LXC/Proxmox-friendly, no privileged caps)
+- **Observability:** `/metrics` (Prometheus exposition), `/health`
+
+## Modules
+
+- **Orders** — work orders with status FSM, change history, warranty tracking
+- **Customers** — individuals/companies, contacts, discounts, blacklist
+- **Devices** — what gets brought in for repair (type/brand/model/serial/IMEI)
+- **Stock** — inventory levels, IN/OUT/adjust/writeoff movements, auto-reservation per order
+- **Finance** — income/expenses, attached to orders or operational
+- **Salaries** — rules (base + % work + % parts margin + % revenue), period calculation
+- **Reports** — summary, stock value, top customers
+- **Users** — RBAC: admin / manager / warehouse / master / accountant
+
+## Deployment from scratch
+
+```bash
+git clone <this-repo> service-crm && cd service-crm
+cp .env.example .env
+# edit .env — set strong values for:
+#   PG_PASSWORD, JWT_SECRET (32+ random chars), ADMIN_EMAIL, ADMIN_PASSWORD
+docker compose up -d --build
+```
+
+After startup:
+- Frontend: `http://127.0.0.1:8091`
+- API docs (Swagger): `http://127.0.0.1:8090/docs`
+- Health: `http://127.0.0.1:8090/health`
+- Metrics: `http://127.0.0.1:8090/metrics`
+
+Bootstrap creates the admin user from `ADMIN_EMAIL` / `ADMIN_PASSWORD` idempotently on first run.
+
+## Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `PG_PASSWORD` | PostgreSQL password |
+| `JWT_SECRET` | Secret for signing JWTs (HS256). Use 32+ random chars. |
+| `JWT_EXPIRES_MINUTES` | Token TTL (default 10080 = 7 days) |
+| `ADMIN_EMAIL` | First admin login |
+| `ADMIN_PASSWORD` | First admin password (rotate after first login) |
+| `ADMIN_FULL_NAME` | Display name for the admin |
+| `CORS_ORIGINS` | Comma-separated list of allowed front origins |
+| `DATABASE_URL` | Full SQLAlchemy DSN (set automatically inside compose) |
+| `APP_ENV` | `production` / `development` |
+
+The frontend reads `VITE_API_URL` at build time (default: same-origin `/api`).
+
+## RBAC
+
+| Role | Orders | Customers | Products | Stock | Finance | Salaries | Users |
+|------|--------|-----------|----------|-------|---------|----------|-------|
+| admin | RW | RW | RW | RW | RW | RW | RW |
+| manager | RW | RW | RW | R | RW | — | — |
+| warehouse | R | — | RW | RW | — | — | — |
+| master | RW (own) | — | R | — | — | — | — |
+| accountant | R | R | R | R | RW | RW | — |
+
+## API
+
+Base prefix `/api`. Authorization — Bearer JWT (see `POST /api/auth/login-json`).
+
+```
+POST   /api/auth/login-json       — { email, password } → { access_token, user }
+GET    /api/auth/me
+GET    /api/users
+POST   /api/users (admin)
+GET    /api/customers?q=...
+POST   /api/customers
+GET    /api/products?kind=part
+POST   /api/products (admin/warehouse)
+GET    /api/stock
+POST   /api/stock/movement
+GET    /api/orders?status=&q=
+POST   /api/orders
+GET    /api/orders/{id}
+PATCH  /api/orders/{id}/status
+POST   /api/orders/{id}/items
+GET    /api/orders/{id}/history
+GET    /api/finance
+POST   /api/finance
+GET    /api/finance/balance
+GET    /api/salaries/rules
+POST   /api/salaries/rules
+POST   /api/salaries/calc        — { user_id, period_start, period_end, save }
+GET    /api/reports/summary
+GET    /api/reports/stock-value
+GET    /api/reports/top-customers
+```
+
+Full API documentation is auto-generated by FastAPI at `/docs` (Swagger UI) and `/redoc`.
+
+## LXC / Proxmox notes
+
+- No `privileged`, no `--cap-add`, no kernel modules required.
+- Enable `nesting=1` for the LXC container so Docker can run inside.
+- In `/etc/pve/lxc/<id>.conf` add:
+  ```
+  features: nesting=1,keyctl=1
+  lxc.apparmor.profile: unconfined
+  ```
+
+## Backup
+
+```bash
+make backup   # → backups/crm_YYYYMMDD_HHMMSS.sql.gz
+```
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
